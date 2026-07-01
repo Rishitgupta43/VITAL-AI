@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V.I.T.A.L — Console</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <span class="logo">V·I·T·<b>A·L</b></span>
+        <span class="tag">assessment console · {{ username }}</span>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <a class="navlink" href="{{ url_for('dashboard', username=username) }}">← Dashboard</a>
+        <a class="navlink" href="{{ url_for('logout') }}">Sign out</a>
+      </div>
+    </div>
+
+    <div class="grid g-2" style="align-items:start;">
+
+      <!-- INPUT -->
+      <div class="panel panel-pad">
+        <p class="eyebrow">New assessment</p>
+        <h1 style="font-size:24px; margin-bottom:6px;">Describe what's happening</h1>
+        <p class="lede" style="font-size:13.5px; margin-bottom:18px;">
+          Your baseline and lifestyle profile are read in automatically.
+        </p>
+
+        <form id="assessForm">
+          <label class="field"><span>Symptoms (required)</span>
+            <textarea name="message1" placeholder="e.g. throbbing headache since morning, mild nausea"></textarea>
+          </label>
+          <label class="field"><span>Vitals — if known</span>
+            <textarea name="message2" placeholder="heart rate, temperature, sleep last night…"></textarea>
+          </label>
+          <label class="field"><span>Visible indicators</span>
+            <textarea name="message3" placeholder="pale, flushed, swelling, rash…"></textarea>
+          </label>
+          <div style="display:flex; gap:10px; margin-top:6px;">
+            <button type="submit" class="btn" id="runBtn" style="flex:1;">Run triage</button>
+            <button type="button" class="btn ghost" id="clearBtn">Clear</button>
+          </div>
+        </form>
+
+        <p class="disclaimer">
+          <b>Not a diagnosis.</b> Educational guidance only. For anything severe or
+          worsening, contact a clinician or emergency services.
+        </p>
+      </div>
+
+      <!-- OUTPUT -->
+      <div class="panel panel-pad" style="min-height:260px;">
+        <p class="eyebrow">Readout</p>
+        <div id="output">
+          <p class="empty">Awaiting input. Run a triage to see the structured assessment.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel panel-pad" style="margin-top:18px;">
+      <p class="eyebrow">Session history</p>
+      <div id="history"></div>
+    </div>
+  </div>
+
+  <script>
+    const username = {{ username | tojson }};
+    let assessments = {{ assessments | tojson }};
+
+    function esc(s){ return (s ?? '').toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+    function li(items, bold){ return (items||[]).map(x => {
+      if (bold && x.name) return `<li><b>${esc(x.name)}</b> — ${esc(x.explanation)}</li>`;
+      return `<li>${esc(x)}</li>`;
+    }).join(''); }
+
+    function renderAssessment(rec){
+      const r = rec.result;
+      const t = new Date(rec.timestamp).toLocaleString();
+      const emerg = r.triage_level === 'emergency' ? `
+        <div class="emergency-strip">Seek immediate medical help.
+          <span class="call">☎ ${esc(r.emergency_number || 'emergency services')}</span></div>` : '';
+      return `<div class="assessment">
+        <div class="head">
+          <span class="badge ${r.triage_level}">${r.triage_level}</span>
+          <span class="meta">${t} · confidence: ${esc(r.confidence)}</span>
+        </div>
+        <div class="summary">${esc(r.summary)}</div>
+        ${emerg}
+        ${r.likely_causes.length?`<div class="section"><h4>Likely causes</h4><ul>${li(r.likely_causes,true)}</ul></div>`:''}
+        ${r.reasoning.length?`<div class="section"><h4>Why it matches</h4><ul>${li(r.reasoning)}</ul></div>`:''}
+        ${r.self_care.length?`<div class="section"><h4>Self-care</h4><ul>${li(r.self_care)}</ul></div>`:''}
+        ${r.precautions.length?`<div class="section"><h4>Precautions</h4><ul>${li(r.precautions)}</ul></div>`:''}
+        <div class="section"><h4>Recommended action</h4><ul><li>${esc(r.recommended_action)}</li></ul></div>
+        ${r.seek_help_if.length?`<div class="section"><h4>Seek help if</h4><ul>${li(r.seek_help_if)}</ul></div>`:''}
+      </div>`;
+    }
+
+    function renderHistory(){
+      const h = document.getElementById('history');
+      h.innerHTML = assessments.length
+        ? [...assessments].reverse().map(renderAssessment).join('')
+        : '<p class="empty">No assessments yet.</p>';
+    }
+    renderHistory();
+
+    const form = document.getElementById('assessForm');
+    const out = document.getElementById('output');
+    const runBtn = document.getElementById('runBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      if (!(fd.get('message1') || '').trim()) {
+        out.innerHTML = '<p class="error-line">Describe at least one symptom to run an assessment.</p>';
+        return;
+      }
+      runBtn.disabled = true; runBtn.textContent = 'Analysing…';
+      out.innerHTML = `<div class="scanning"><span class="dot"></span>
+        Cross-referencing symptoms with your profile…</div>`;
+
+      try {
+        const r = await fetch(`/ask/${encodeURIComponent(username)}`, { method: 'POST', body: fd });
+        const data = await r.json();
+        if (!r.ok) { out.innerHTML = `<p class="error-line">${esc(data.error || 'Something went wrong.')}</p>`; return; }
+        out.innerHTML = renderAssessment(data);
+        assessments.push(data);
+        renderHistory();
+        form.reset();
+      } catch (err) {
+        out.innerHTML = '<p class="error-line">Network error — the server didn\'t respond.</p>';
+      } finally {
+        runBtn.disabled = false; runBtn.textContent = 'Run triage';
+      }
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      form.reset();
+      out.innerHTML = '<p class="empty">Awaiting input. Run a triage to see the structured assessment.</p>';
+    });
+  </script>
+</body>
+</html>

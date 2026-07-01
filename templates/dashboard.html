@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V.I.T.A.L — {{ username }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <span class="logo">V·I·T·<b>A·L</b></span>
+        <span class="tag">profile · {{ username }}</span>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <a class="navlink" href="{{ url_for('console', username=username) }}">Run assessment →</a>
+        <a class="navlink" href="{{ url_for('logout') }}">Sign out</a>
+      </div>
+    </div>
+
+    <div class="grid g-2" style="align-items:start;">
+
+      <!-- WELLNESS -->
+      <div class="panel panel-pad">
+        <p class="eyebrow">Wellness index</p>
+        <div class="ring-wrap">
+          <div class="ring">
+            <svg width="148" height="148" viewBox="0 0 148 148">
+              <circle cx="74" cy="74" r="66" fill="none" stroke="var(--line-soft)" stroke-width="10"/>
+              <circle id="ringArc" cx="74" cy="74" r="66" fill="none" stroke="var(--teal)"
+                      stroke-width="10" stroke-linecap="round"
+                      stroke-dasharray="414.7" stroke-dashoffset="414.7"/>
+            </svg>
+            <div class="center">
+              <div class="score" id="ringScore">–</div>
+              <div class="out">/ 100</div>
+            </div>
+          </div>
+          <div class="pillars" id="pillars">
+            {% for name in ['Sleep','Activity','Nutrition','Substances'] %}
+            <div class="pillar-row" data-pillar="{{ name }}">
+              <span class="name">{{ name }}</span>
+              <div class="bar"><i style="width:0%"></i></div>
+              <span class="val">–</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <p class="lede" id="completeness" style="font-size:12.5px; margin-top:16px; font-family:var(--mono); color:var(--faint);"></p>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="panel panel-pad">
+        <p class="eyebrow">Medical baseline</p>
+        <div style="font-family:var(--mono); font-size:13px; line-height:1.9; color:var(--muted); white-space:pre-line;">{{ user.history }}</div>
+      </div>
+    </div>
+
+    <!-- LIFESTYLE -->
+    <div class="panel panel-pad" style="margin-top:18px;">
+      <p class="eyebrow">Lifestyle inputs — drive the index in real time</p>
+      <form id="lifestyleForm">
+        <div class="grid g-3">
+          {% set L = user.lifestyle %}
+          {% macro sel(field, label, opts) %}
+          <label class="field"><span>{{ label }}</span>
+            <select name="{{ field }}">
+              <option value="">—</option>
+              {% for o in opts %}<option {{ 'selected' if L.get(field)==o }}>{{ o }}</option>{% endfor %}
+            </select>
+          </label>
+          {% endmacro %}
+          {{ sel('sleep_hours','Sleep hours',['<5h','5-6h','6-7h','7-8h','8+h']) }}
+          {{ sel('sleep_quality','Sleep quality',['Poor','Average','Good']) }}
+          {{ sel('wake_refreshed','Wake refreshed',['Yes','No']) }}
+          {{ sel('exercise_freq','Exercise / week',['0','1-2','3-4','5+']) }}
+          {{ sel('exercise_type','Exercise type',['None','Strength','Cardio','Mixed']) }}
+          {{ sel('diet_type','Diet type',['Vegetarian','Non-Veg','Vegan']) }}
+          {{ sel('processed_food','Processed food',['Low','Moderate','High']) }}
+          {{ sel('alcohol','Alcohol',['None','Social','Weekly','Heavy']) }}
+          {{ sel('smoking','Smoking / vaping',['Never','Former','Current']) }}
+          {{ sel('caffeine','Caffeine',['0','1-2 cups','3-4','5+']) }}
+        </div>
+      </form>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="panel panel-pad" style="margin-top:18px;">
+      <p class="eyebrow">Assessment history</p>
+      <div id="history"></div>
+    </div>
+
+    <p class="disclaimer">
+      <b>Not a medical device.</b> V.I.T.A.L. is an educational project. It does not
+      diagnose and never replaces a qualified clinician. If you think you have a
+      medical emergency, contact your local emergency service immediately.
+    </p>
+  </div>
+
+  <script>
+    const CIRC = 414.7;
+    const username = {{ username | tojson }};
+    const initialWellness = {{ wellness | tojson }};
+    const assessments = {{ assessments | tojson }};
+
+    function paint(w) {
+      const overall = w.overall;
+      document.getElementById('ringScore').textContent = overall ?? '–';
+      const off = overall == null ? CIRC : CIRC * (1 - overall / 100);
+      document.getElementById('ringArc').style.strokeDashoffset = off;
+      document.querySelectorAll('#pillars .pillar-row').forEach(row => {
+        const v = w.pillars[row.dataset.pillar];
+        row.querySelector('.bar > i').style.width = (v ?? 0) + '%';
+        row.querySelector('.val').textContent = v ?? '–';
+      });
+      document.getElementById('completeness').textContent =
+        w.completeness < 100
+          ? `profile ${w.completeness}% complete — fill more inputs to sharpen the index`
+          : `profile complete`;
+    }
+    paint(initialWellness);
+
+    document.querySelectorAll('#lifestyleForm select').forEach(s =>
+      s.addEventListener('change', async () => {
+        const body = new FormData(document.getElementById('lifestyleForm'));
+        const r = await fetch(`/lifestyle/${encodeURIComponent(username)}`, { method: 'POST', body });
+        const data = await r.json();
+        if (data.ok) paint(data.wellness);
+      })
+    );
+
+    // ---- render history (shared renderer) ----
+    function esc(s){ return (s ?? '').toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+    function li(items, bold){ return (items||[]).map(x => {
+      if (bold && x.name) return `<li><b>${esc(x.name)}</b> — ${esc(x.explanation)}</li>`;
+      return `<li>${esc(x)}</li>`;
+    }).join(''); }
+
+    function renderAssessment(rec){
+      const r = rec.result;
+      const t = new Date(rec.timestamp).toLocaleString();
+      const emerg = r.triage_level === 'emergency' ? `
+        <div class="emergency-strip">Seek immediate medical help.
+          <span class="call">☎ ${esc(r.emergency_number || 'emergency services')}</span></div>` : '';
+      return `<div class="assessment">
+        <div class="head">
+          <span class="badge ${r.triage_level}">${r.triage_level}</span>
+          <span class="meta">${t} · confidence: ${esc(r.confidence)}</span>
+        </div>
+        <div class="summary">${esc(r.summary)}</div>
+        ${emerg}
+        ${r.likely_causes.length?`<div class="section"><h4>Likely causes</h4><ul>${li(r.likely_causes,true)}</ul></div>`:''}
+        ${r.reasoning.length?`<div class="section"><h4>Why it matches</h4><ul>${li(r.reasoning)}</ul></div>`:''}
+        ${r.self_care.length?`<div class="section"><h4>Self-care</h4><ul>${li(r.self_care)}</ul></div>`:''}
+        ${r.precautions.length?`<div class="section"><h4>Precautions</h4><ul>${li(r.precautions)}</ul></div>`:''}
+        <div class="section"><h4>Recommended action</h4><ul><li>${esc(r.recommended_action)}</li></ul></div>
+        ${r.seek_help_if.length?`<div class="section"><h4>Seek help if</h4><ul>${li(r.seek_help_if)}</ul></div>`:''}
+      </div>`;
+    }
+
+    const hist = document.getElementById('history');
+    hist.innerHTML = assessments.length
+      ? assessments.map(renderAssessment).join('')
+      : '<p class="empty">No assessments yet. Run one from the console.</p>';
+  </script>
+</body>
+</html>

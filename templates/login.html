@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V.I.T.A.L — Sign in</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="wrap" style="max-width: 720px;">
+    <div class="topbar">
+      <div class="brand">
+        <span class="logo">V·I·T·<b>A·L</b></span>
+        <span class="tag">vital intelligence &amp; triage assistance layer</span>
+      </div>
+    </div>
+
+    <div class="panel panel-pad">
+      <p class="eyebrow">New session</p>
+      <h1 style="font-size: 30px; margin-bottom: 10px;">Set up your health profile</h1>
+      <p class="lede" style="margin-bottom: 22px;">
+        This baseline stays with you across assessments — the more accurate it is,
+        the sharper the triage.
+      </p>
+
+      {% if error %}<p class="error-line">{{ error }}</p>{% endif %}
+
+      <form method="POST" action="{{ url_for('login') }}">
+        <div class="grid g-2">
+          <label class="field"><span>Name</span>
+            <input type="text" name="name" placeholder="e.g. Aarav" required>
+          </label>
+          <label class="field"><span>Country (sets emergency routing)</span>
+            <select name="country">
+              <option value="india">India</option>
+              <option value="usa">United States</option>
+              <option value="uk">United Kingdom</option>
+              <option value="canada">Canada</option>
+              <option value="australia">Australia</option>
+              <option value="singapore">Singapore</option>
+              <option value="uae">UAE</option>
+              <option value="germany">Germany</option>
+              <option value="france">France</option>
+            </select>
+          </label>
+        </div>
+
+        <p class="eyebrow" style="margin-top: 12px;">Chronic history</p>
+        <div class="grid g-3">
+          <label class="field"><span>Heart disease</span>
+            <select name="q1"><option>No</option><option>Yes</option><option>Unsure</option></select>
+          </label>
+          <label class="field"><span>Diabetes</span>
+            <select name="q2"><option>No</option><option>Yes</option><option>Unsure</option></select>
+          </label>
+          <label class="field"><span>High blood pressure</span>
+            <select name="q3"><option>No</option><option>Yes</option><option>Unsure</option></select>
+          </label>
+          <label class="field"><span>Respiratory issues</span>
+            <select name="q4"><option>No</option><option>Yes</option><option>Unsure</option></select>
+          </label>
+          <label class="field"><span>Stress / anxiety</span>
+            <select name="q5"><option>No</option><option>Mild</option><option>Significant</option></select>
+          </label>
+          <label class="field"><span>Anything else</span>
+            <input type="text" name="custom_issue" placeholder="allergies, meds…">
+          </label>
+        </div>
+
+        <button type="submit" class="btn" style="width: 100%; margin-top: 8px;">
+          Create profile →
+        </button>
+      </form>
+
+      <p class="disclaimer">
+        <b>Not a medical device.</b> V.I.T.A.L. is a student-built educational tool.
+        It does not diagnose and is not a substitute for a qualified clinician. In an
+        emergency, call your local emergency number.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
