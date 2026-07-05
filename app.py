@@ -4,6 +4,13 @@ A structured AI health-intelligence console built on Flask + Google Gemini.
 
 This is an educational project. It does NOT diagnose. Every assessment is
 framed as guidance and always routes serious cases to real medical care.
+
+DEPLOYMENT
+----------
+The API key is read from the GEMINI_API_KEY environment variable.
+  • On Render:  Dashboard → your service → Environment → add GEMINI_API_KEY = <your key>
+  • Locally:    set it in your shell, OR paste it into LOCAL_API_KEY below for quick tests.
+Never commit a real key to a public repo — GitHub/Google will auto-revoke it.
 """
 
 import os
@@ -15,7 +22,7 @@ from datetime import datetime, timezone
 
 from flask import (
     Flask, render_template, request, redirect,
-    url_for, session, jsonify, abort
+    url_for, session, jsonify
 )
 
 # New Google Gen AI SDK (replaces the deprecated google.generativeai)
@@ -26,16 +33,11 @@ from google.genai import types
 #  CONFIG
 # --------------------------------------------------------------------------- #
 
-# ==========================================================================
-#  PASTE YOUR GEMINI API KEY BETWEEN THE QUOTES BELOW.
-#  WARNING: if this file is pushed to a PUBLIC GitHub repo, the key WILL be
-#  scraped and auto-revoked. Keep the repo private, OR leave this blank and
-#  set GEMINI_API_KEY in Render's Environment tab (the safe, recommended way).
-# ==========================================================================
-GEMINI_API_KEY = "AQ.Ab8RN6LY7WiW6r7tbbYkQHQbEPeWVQnsfqbOO91ucPMdsu8lzg"
+# Optional local-only fallback. Leave this "" when pushing to GitHub and set the
+# key in Render's Environment tab instead. The environment variable always wins.
+LOCAL_API_KEY = "AIzaSyC60EGZBOvkKzuU0WTZlKi0vPfx8uW0uIo"
 
-# An env var (e.g. set in Render's dashboard) overrides the pasted value above.
-API_KEY = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY
+API_KEY = os.environ.get("GEMINI_API_KEY") or LOCAL_API_KEY or None
 
 MODEL = "gemini-3.5-flash"                  # current stable Flash (aka gemini-flash-latest)
 FALLBACK_MODEL = "gemini-3.1-flash-lite"    # cheaper, recovers faster when the primary is overloaded
@@ -73,8 +75,12 @@ def load_users():
 
 
 def save_users(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    try:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except OSError as e:
+        # Render's default filesystem is ephemeral; a failed write shouldn't 500.
+        print("WARN: could not persist users.json:", e)
 
 
 # --------------------------------------------------------------------------- #
@@ -222,7 +228,7 @@ def _generate(model, prompt):
 def run_triage(prompt):
     """Call Gemini with backoff + model fallback. Safe fallback dict on total failure."""
     if client is None:
-        return _fallback("GEMINI_API_KEY is not set on the server.")
+        return _fallback("The AI service is not configured. Set GEMINI_API_KEY and redeploy.")
 
     for model in (MODEL, FALLBACK_MODEL):
         for attempt in range(MAX_RETRIES):
@@ -415,6 +421,12 @@ def logout():
     return redirect(url_for("login"))
 
 
+@app.route("/healthz")
+def healthz():
+    """Lightweight health check — confirms the app is up and whether the key is set."""
+    return jsonify({"ok": True, "ai_configured": client is not None})
+
+
 # --------------------------------------------------------------------------- #
 #  RUN
 # --------------------------------------------------------------------------- #
@@ -423,5 +435,7 @@ if __name__ == "__main__":
     if not API_KEY:
         print("WARNING: GEMINI_API_KEY is not set. The console will load, but "
               "assessments will show a fallback message until you set the key.")
-    port = int(os.environ.get("PORT", 5002))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # Render provides PORT; 5001 is the local default. debug is off unless asked.
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=port, debug=debug)
