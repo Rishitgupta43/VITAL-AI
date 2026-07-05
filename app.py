@@ -25,27 +25,17 @@ from google.genai import types
 # --------------------------------------------------------------------------- #
 #  CONFIG
 # --------------------------------------------------------------------------- #
-def _load_dotenv(filename=".env"):
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
-    if not os.path.exists(path):
-        return
-    # utf-8-sig transparently strips a BOM that Notepad adds and that would
-    # otherwise corrupt the first variable's name.
-    with open(path, encoding="utf-8-sig") as f:
-        for line in f:
-            line = line.strip().lstrip("\ufeff")
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip().lstrip("\ufeff")
-            value = value.strip().strip('"').strip("'")
-            os.environ.setdefault(key, value)
 
+# ==========================================================================
+#  PASTE YOUR GEMINI API KEY BETWEEN THE QUOTES BELOW.
+#  WARNING: if this file is pushed to a PUBLIC GitHub repo, the key WILL be
+#  scraped and auto-revoked. Keep the repo private, OR leave this blank and
+#  set GEMINI_API_KEY in Render's Environment tab (the safe, recommended way).
+# ==========================================================================
+GEMINI_API_KEY = "AQ.Ab8RN6LY7WiW6r7tbbYkQHQbEPeWVQnsfqbOO91ucPMdsu8lzg"
 
-_load_dotenv()
-
-# The key is read from the environment / .env. Never hard-code it in source.
-API_KEY = os.environ.get("GEMINI_API_KEY")
+# An env var (e.g. set in Render's dashboard) overrides the pasted value above.
+API_KEY = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY
 
 MODEL = "gemini-3.5-flash"                  # current stable Flash (aka gemini-flash-latest)
 FALLBACK_MODEL = "gemini-3.1-flash-lite"    # cheaper, recovers faster when the primary is overloaded
