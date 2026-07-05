@@ -433,5 +433,5 @@ if __name__ == "__main__":
     if not API_KEY:
         print("WARNING: GEMINI_API_KEY is not set. The console will load, but "
               "assessments will show a fallback message until you set the key.")
-    port = int(os.environ.get("PORT", 5001))
+    port = int(os.environ.get("PORT", 5002))
     app.run(host="0.0.0.0", port=port, debug=True)
