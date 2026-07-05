@@ -9,6 +9,8 @@ framed as guidance and always routes serious cases to real medical care.
 import os
 import json
 import uuid
+import time
+import random
 from datetime import datetime, timezone
 
 from flask import (
@@ -45,7 +47,13 @@ _load_dotenv()
 # The key is read from the environment / .env. Never hard-code it in source.
 API_KEY = os.environ.get("GEMINI_API_KEY")
 
-MODEL = "gemini-3.5-flash"  # current stable Flash; also aliased as gemini-flash-latest
+MODEL = "gemini-3.5-flash"                  # current stable Flash (aka gemini-flash-latest)
+FALLBACK_MODEL = "gemini-3.1-flash-lite"    # cheaper, recovers faster when the primary is overloaded
+
+RETRYABLE = {429, 500, 503, 504}            # server/rate errors worth retrying; 4xx are not
+MAX_RETRIES = 4                             # attempts per model
+BASE_DELAY = 1.0                            # seconds, doubles each retry
+
 DATA_FILE = os.path.join(os.path.dirname(__file__), "users.json")
 
 client = genai.Client(api_key=API_KEY) if API_KEY else None
@@ -197,32 +205,66 @@ Facial / visible indicators: {facial or "none stated"}
 Assess this presentation and respond with the JSON object only."""
 
 
+def _status_code(err):
+    """Pull an HTTP status out of a genai error, however it's shaped."""
+    code = getattr(err, "code", None) or getattr(err, "status_code", None)
+    if code is None:
+        msg = str(err)
+        for c in ("429", "500", "503", "504"):
+            if c in msg:
+                return int(c)
+    return code
+
+
+def _generate(model, prompt):
+    resp = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_INSTRUCTION,
+            response_mime_type="application/json",
+            temperature=0.4,
+        ),
+    )
+    return (resp.text or "").strip()
+
+
 def run_triage(prompt):
-    """Call Gemini and return a parsed dict, or a safe fallback on any failure."""
+    """Call Gemini with backoff + model fallback. Safe fallback dict on total failure."""
     if client is None:
         return _fallback("GEMINI_API_KEY is not set on the server.")
-    try:
-        resp = client.models.generate_content(
-            model=MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
-                response_mime_type="application/json",
-                temperature=0.4,
-            ),
-        )
-        raw = (resp.text or "").strip()
-        # strip stray fences just in case
-        if raw.startswith("```"):
-            raw = raw.strip("`")
-            raw = raw[raw.find("{"):]
-        data = json.loads(raw)
-        return _normalise(data)
-    except json.JSONDecodeError:
-        return _fallback("The model returned an unreadable response. Please retry.")
-    except Exception as e:                       # noqa: BLE001
-        print("TRIAGE ERROR:", e)
-        return _fallback("The assessment engine is temporarily unavailable.")
+
+    for model in (MODEL, FALLBACK_MODEL):
+        for attempt in range(MAX_RETRIES):
+            try:
+                raw = _generate(model, prompt)
+                # strip stray fences just in case
+                if raw.startswith("```"):
+                    raw = raw.strip("`")
+                    raw = raw[raw.find("{"):]
+                return _normalise(json.loads(raw))
+
+            except json.JSONDecodeError:
+                # model answered but not clean JSON — one more try, then next model
+                if attempt < MAX_RETRIES - 1:
+                    continue
+                break
+
+            except Exception as e:                       # noqa: BLE001
+                code = _status_code(e)
+                if code in RETRYABLE:
+                    if attempt < MAX_RETRIES - 1:
+                        delay = BASE_DELAY * (2 ** attempt) + random.uniform(0, 0.5)
+                        print(f"[triage] {model} {code} — retry "
+                              f"{attempt + 1}/{MAX_RETRIES} in {delay:.1f}s")
+                        time.sleep(delay)
+                        continue
+                    break  # out of retries on this model → try the fallback model
+                # 400/401/403/404: switching models won't help, bail immediately
+                print("TRIAGE ERROR (non-retryable):", code, e)
+                return _fallback("The assessment engine hit a configuration error.")
+
+    return _fallback("The assessment engine is busy right now — please try again in a moment.")
 
 
 def _normalise(d):
