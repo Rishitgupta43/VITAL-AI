@@ -19,7 +19,6 @@ import uuid
 import time
 import random
 from datetime import datetime, timezone
-
 from flask import (
     Flask, render_template, request, redirect,
     url_for, session, jsonify
@@ -427,6 +426,31 @@ def healthz():
     return jsonify({"ok": True, "ai_configured": client is not None})
 
 
+active_users = {}
+USER_TIMEOUT_SECONDS = 30  # User considered active if pinged within 30s
+
+
+@app.route('/api/ping-active', methods=['POST'])
+def ping_active():
+    """Pings server to keep user session alive and returns active count."""
+    user_id = request.remote_addr  # or current_user.id / session.sid
+    active_users[user_id] = time.time()
+
+    # Clean up stale sessions older than USER_TIMEOUT_SECONDS
+    current_time = time.time()
+    expired = [uid for uid, timestamp in active_users.items() if current_time - timestamp > USER_TIMEOUT_SECONDS]
+    for uid in expired:
+        del active_users[uid]
+
+    return jsonify({"live_users": len(active_users)})
+
+
+@app.route('/api/live-users', methods=['GET'])
+def get_live_users():
+    """Endpoint to fetch current live user count."""
+    current_time = time.time()
+    live_count = sum(1 for timestamp in active_users.values() if current_time - timestamp <= USER_TIMEOUT_SECONDS)
+    return jsonify({"live_users": max(1, live_count)})
 # --------------------------------------------------------------------------- #
 #  RUN
 # --------------------------------------------------------------------------- #
