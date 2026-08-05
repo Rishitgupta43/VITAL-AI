@@ -233,3 +233,260 @@ select { appearance: none; cursor: pointer;
   font-size: 13px; padding: 40px 20px; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+/* ========================================== */
+/* LIVE USER COUNT BUBBLE STYLES               */
+/* ========================================== */
+.vital-live-bubble {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 30px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pulse-dot {
+  width: 9px;
+  height: 9px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-animation 1.5s infinite;
+}
+
+@keyframes pulse-animation {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.live-count {
+  color: #34d399;
+  font-weight: 700;
+}
+
+/* ========================================== */
+/* HEALTH QUIZ WIDGET & LARGE MODAL STYLES    */
+/* ========================================== */
+.vital-quiz-widget {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Floating Launcher Button */
+.quiz-launcher-btn {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quiz-launcher-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+}
+
+/* LARGE CENTERED MODAL */
+.quiz-popin {
+  position: fixed;
+  /* Centering the modal */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  /* Sizing it to 80% of the screen */
+  width: 80vw;
+  height: 80vh;
+  max-width: 1000px;
+  max-height: 800px;
+
+  /* Dark Theme Styling */
+  background: #0f172a; /* Deep dark blue background */
+  border-radius: 20px;
+  border: 1px solid #334155;
+
+  /* This shadow trick dims the rest of your dashboard behind the quiz! */
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7), 0 0 0 9999px rgba(0, 0, 0, 0.6);
+
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.quiz-popin.hidden {
+  display: none !important;
+}
+
+/* Header */
+.quiz-header {
+  background: #1e293b; /* Slightly lighter dark panel */
+  color: #f8fafc; /* Crisp white text */
+  padding: 24px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #334155;
+}
+
+.quiz-header h3 {
+  margin: 0;
+  font-size: 24px; /* Bigger Title */
+  font-weight: 700;
+}
+
+.quiz-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 32px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.quiz-close-btn:hover {
+  color: #f1f5f9;
+}
+
+/* Body & Content Sizing */
+.quiz-body {
+  padding: 40px 60px; /* Much larger padding */
+  color: #e2e8f0;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Keeps questions nicely centered vertically */
+}
+
+.quiz-progress {
+  font-size: 16px;
+  color: #94a3b8;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.quiz-question-text {
+  font-weight: 700;
+  font-size: 32px; /* Massive readable question text */
+  margin-bottom: 40px;
+  line-height: 1.4;
+  color: #ffffff;
+}
+
+.quiz-options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* Wider gaps between options */
+}
+
+.quiz-opt-btn {
+  background: #1e293b; /* Dark option boxes */
+  border: 1px solid #475569;
+  color: #f8fafc;
+  padding: 20px 24px;
+  border-radius: 12px;
+  text-align: left;
+  font-size: 20px; /* Larger option text */
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quiz-opt-btn:hover:not(:disabled) {
+  background: #334155;
+  border-color: #64748b;
+  transform: translateX(6px); /* Smooth slide animation on hover */
+}
+
+.quiz-opt-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Feedback Styling (Correct/Incorrect) */
+.quiz-feedback {
+  margin-top: 30px;
+  padding: 24px;
+  border-radius: 12px;
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+.quiz-feedback.correct {
+  background: rgba(22, 101, 52, 0.2);
+  color: #4ade80;
+  border: 1px solid #166534;
+}
+
+.quiz-feedback.incorrect {
+  background: rgba(153, 27, 27, 0.2);
+  color: #f87171;
+  border: 1px solid #991b1b;
+}
+
+/* Results Screen */
+.quiz-results {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.quiz-results h4 {
+  font-size: 36px;
+  color: #ffffff;
+  margin-bottom: 20px;
+}
+
+#quiz-score-text {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.quiz-badge {
+  font-weight: 700;
+  color: #60a5fa; /* Vibrant blue badge text */
+  font-size: 22px;
+  margin: 20px 0 40px;
+}
+
+.quiz-restart-btn {
+  background: #10b981; /* Teal restart button */
+  color: white;
+  border: none;
+  padding: 16px 36px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 20px;
+  transition: background 0.2s;
+}
+
+.quiz-restart-btn:hover {
+  background: #059669;
+}
+.hidden {
+  display: none !important;
+}
