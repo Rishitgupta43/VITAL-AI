@@ -34,7 +34,7 @@ from google.genai import types
 
 # Optional local-only fallback. Leave this "" when pushing to GitHub and set the
 # key in Render's Environment tab instead. The environment variable always wins.
-LOCAL_API_KEY = "AQ.Ab8RN6L0ZDwKAtBQcKfww0lfS3iyT7fgte3Q5yxFsnc1yH5AgQ"
+LOCAL_API_KEY = "AIzaSyC22LVIN-vx3u99vWYqLCM4zJYQpzsfyaU"
 
 API_KEY = os.environ.get("GEMINI_API_KEY") or LOCAL_API_KEY or None
 
