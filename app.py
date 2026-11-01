@@ -34,12 +34,12 @@ from google.genai import types
 
 # Optional local-only fallback. Leave this "" when pushing to GitHub and set the
 # key in Render's Environment tab instead. The environment variable always wins.
-LOCAL_API_KEY = "AQ.Ab8RN6KRm10AEa7vuZ1YKTtoojlHqH5hquswCh39wdMfLzlCHw"
+LOCAL_API_KEY = "AQ.Ab8RN6LPD3xmzCKIfmITf0dXfnQ7j6eJ_VgnjHmdUSeDxE1Hsw"
 
 API_KEY = os.environ.get("GEMINI_API_KEY") or LOCAL_API_KEY or None
 
-MODEL = "gemini-3.5-flash"                  # current stable Flash (aka gemini-flash-latest)
-FALLBACK_MODEL = "gemini-3.1-flash-lite"    # cheaper, recovers faster when the primary is overloaded
+MODEL = "gemini-3.8-flash"                  # current stable Flash (aka gemini-flash-latest)
+FALLBACK_MODEL = "gemini-3.5-flash-lite"    # cheaper, recovers faster when the primary is overloaded
 
 RETRYABLE = {429, 500, 503, 504}            # server/rate errors worth retrying; 4xx are not
 MAX_RETRIES = 4                             # attempts per model
